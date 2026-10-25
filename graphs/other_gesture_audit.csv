@@ -1,0 +1,16 @@
+index,image,reported_thumbs_up,top_confidence
+0,dataset_cls_clean/val/other_gesture/102_2024_08_13_15_04_56_jpg.rf.d42a218bd38e7018d13254c49afcfaf4_00_c1.jpg,False,0.0
+1,dataset_cls_clean/val/other_gesture/102_2024_08_13_15_04_56_jpg.rf.d42a218bd38e7018d13254c49afcfaf4_01_c1.jpg,False,0.0
+2,dataset_cls_clean/val/other_gesture/113_jpg.rf.cdcbfe06ae109efc840e13b4ab65e694_00_c1.jpg,False,0.0
+3,dataset_cls_clean/val/other_gesture/113_jpg.rf.cdcbfe06ae109efc840e13b4ab65e694_01_c1.jpg,True,0.9769
+4,dataset_cls_clean/val/other_gesture/115_2024_08_13_15_05_06_jpg.rf.18e8c5ae9ba728e58994405ff418650f_00_c1.jpg,False,0.0
+5,dataset_cls_clean/val/other_gesture/115_jpg.rf.f504fa398f503ed4fd6eb18cc81e1236_00_c1.jpg,False,0.0
+6,dataset_cls_clean/val/other_gesture/118_jpg.rf.6713e7510d743950ae575bdbd7ceb1f4_00_c1.jpg,False,0.0
+7,dataset_cls_clean/val/other_gesture/118_jpg.rf.6713e7510d743950ae575bdbd7ceb1f4_02_c1.jpg,False,0.0
+8,dataset_cls_clean/val/other_gesture/123_jpg.rf.c525a60f5e801bace40318ecf3383819_00_c1.jpg,False,0.0
+9,dataset_cls_clean/val/other_gesture/42_jpg.rf.cfec1c20335ce9e4f1c243d42817b133_01_c1.jpg,False,0.0
+10,dataset_cls_clean/val/other_gesture/70_jpg.rf.4dc36eea4602e5ae98eca27c668b4e35_00_c1.jpg,False,0.0
+11,dataset_cls_clean/val/other_gesture/70_jpg.rf.4dc36eea4602e5ae98eca27c668b4e35_01_c1.jpg,False,0.0
+12,dataset_cls_clean/val/other_gesture/86_jpg.rf.298f0b386d98246ee8e8adfbad744c0b_00_c1.jpg,True,0.9304
+13,dataset_cls_clean/val/other_gesture/99_jpg.rf.06cc6fb1e96da861783900b1619d7592_00_c1.jpg,False,0.0
+14,dataset_cls_clean/val/other_gesture/99_jpg.rf.06cc6fb1e96da861783900b1619d7592_01_c1.jpg,False,0.0

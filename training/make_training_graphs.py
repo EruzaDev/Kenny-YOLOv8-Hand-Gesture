@@ -7,11 +7,13 @@ import json
 import shutil
 from pathlib import Path
 
+import cv2
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from ultralytics import YOLO  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "models" / "runs"
@@ -186,6 +188,41 @@ def plot_detector(run: str, filename: str) -> dict:
     }
 
 
+def plot_classifier_decisions() -> dict:
+    """Show the internal binary decision without exposing the training class name."""
+    model = YOLO(str(ROOT / "models" / "thumbs_up_classifier.pt"))
+    thumbs_index = next(index for index, name in model.names.items() if name == "thumbs_up")
+    matrix = np.zeros((2, 2), dtype=int)
+    threshold = 0.80
+    for actual, folder in enumerate(("other_gesture", "thumbs_up")):
+        for path in sorted((ROOT / "dataset_cls_clean" / "val" / folder).glob("*.jpg")):
+            image = cv2.imread(str(path))
+            if image is None:
+                continue
+            probability = float(model.predict(image, imgsz=224, device="cpu", verbose=False)[0].probs.data[thumbs_index])
+            matrix[actual, int(probability >= threshold)] += 1
+
+    rates = matrix / np.maximum(matrix.sum(axis=1, keepdims=True), 1)
+    fig, ax = plt.subplots(figsize=(6.5, 5.6))
+    ax.imshow(rates, cmap="Blues", vmin=0, vmax=1)
+    for row in range(2):
+        for col in range(2):
+            value = rates[row, col]
+            ax.text(col, row, f"{matrix[row, col]} / {matrix[row].sum()}\n{value:.0%}",
+                    ha="center", va="center", fontsize=14,
+                    color="white" if value > 0.55 else "#0f172a", weight="bold")
+    ax.set_xticks((0, 1), ("No thumbs up", "Thumbs up"))
+    ax.set_yticks((0, 1), ("No thumbs up", "Thumbs up"))
+    ax.set_xlabel("Classifier decision")
+    ax.set_ylabel("Validation label")
+    ax.set_title("Internal classifier decisions at 80% confidence\nFinal app also checks the hand detector", weight="bold")
+    fig.tight_layout()
+    fig.savefig(OUT / "classifier_confusion_matrix_normalized.png", dpi=180, bbox_inches="tight")
+    plt.close(fig)
+    return {"threshold": threshold, "matrix_rows_actual_no_thumbs_up_thumbs_up": matrix.tolist(),
+            "accuracy": float(np.trace(matrix) / matrix.sum())}
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -193,11 +230,11 @@ def main() -> None:
         "crop_detector": plot_detector("thumbsup_crops_n512", "crop_detector_train_val_curves.png"),
         "stage1_detector": plot_detector("stage1_all", "stage1_detector_train_val_curves.png"),
     }
+    summary["classifier_decisions"] = plot_classifier_decisions()
     (OUT / "train_val_summary.json").write_text(json.dumps(summary, indent=2))
 
     copies = (
         ("thumbsup_cls_clean2", "results.png", "classifier_ultralytics_results.png"),
-        ("thumbsup_cls_clean2", "confusion_matrix_normalized.png", "classifier_confusion_matrix_normalized.png"),
         ("thumbsup_crops_n512", "results.png", "crop_detector_ultralytics_results.png"),
         ("thumbsup_crops_n512", "confusion_matrix_normalized.png", "crop_detector_confusion_matrix_normalized.png"),
         ("stage1_all", "results.png", "stage1_detector_ultralytics_results.png"),

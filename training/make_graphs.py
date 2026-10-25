@@ -7,6 +7,7 @@ confusion matrices, and negative-image checks to ``graphs/``.
 from __future__ import annotations
 
 import json
+import csv
 import sys
 from pathlib import Path
 
@@ -35,7 +36,7 @@ AMBER = "#d97706"
 RED = "#dc2626"
 GRAY = "#64748b"
 BLUE = "#2563eb"
-THRESHOLD = 0.90
+THRESHOLD = pipeline.DEFAULT_CONFIDENCE
 
 
 def _nms(detections: list[dict], threshold: float = 0.65) -> list[dict]:
@@ -133,6 +134,7 @@ def _load_items(
         items.append(
             {
                 "stem": stem,
+                "image_path": image_path,
                 "truth": truth,
                 "candidates": _collect_candidates(image),
             }
@@ -276,7 +278,7 @@ def plot_confidence(photo_tp: list[float], webcam_tp: list[float]) -> None:
         ax.text(
             0.02,
             0.96,
-            f"≥ 90%: {sum(score >= THRESHOLD for score in scores)}/{len(scores)}",
+            f"≥ {THRESHOLD:.0%}: {sum(score >= THRESHOLD for score in scores)}/{len(scores)}",
             transform=ax.transAxes,
             va="top",
             color=GREEN,
@@ -289,41 +291,32 @@ def plot_confidence(photo_tp: list[float], webcam_tp: list[float]) -> None:
 
 def plot_method_comparison(results: dict) -> None:
     methods = ("teacher", "classifier", "ensemble")
-    labels = ("Teacher only", "Classifier only", "Noisy-OR ensemble")
-    colors = (BLUE, AMBER, GREEN)
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), sharey=True)
+    labels = ("Teacher", "Classifier", "Ensemble")
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
     for ax, dataset, title in (
         (axes[0], "photo_val", "Photo validation"),
         (axes[1], "webcam", "Webcam-like crops"),
     ):
         x = np.arange(len(methods))
-        width = 0.24
-        for offset, metric in enumerate(("precision", "recall", "f1")):
-            values = [results[dataset][method][metric] for method in methods]
-            bars = ax.bar(
-                x + (offset - 1) * width,
-                values,
-                width,
-                label=metric.upper(),
-                color=colors[offset],
-                alpha=0.9,
-            )
-            for bar, value in zip(bars, values):
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    value + 0.015,
-                    f"{value:.2f}",
-                    ha="center",
-                    va="bottom",
-                    fontsize=7,
-                )
+        tp = np.array([results[dataset][method]["tp"] for method in methods])
+        fn = np.array([results[dataset][method]["fn"] for method in methods])
+        fp = np.array([results[dataset][method]["fp"] for method in methods])
+        ax.bar(x, tp, color=GREEN, label="Correct detections")
+        ax.bar(x, fn, bottom=tp, color=AMBER, label="Missed thumbs up")
+        ax.bar(x, fp, bottom=tp + fn, color=RED, label="False detections")
+        for index, method in enumerate(methods):
+            score = results[dataset][method]["f1"]
+            ax.text(index, tp[index] + fn[index] + fp[index] + 0.35,
+                    f"F1 {score:.2f}", ha="center", fontsize=9, weight="bold")
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=8)
-        ax.set_ylim(0.0, 1.12)
-        ax.set_title(f"{title} · threshold 90%", fontsize=10, weight="bold")
-        ax.legend(fontsize=7, frameon=False, ncol=3, loc="upper left")
-    axes[0].set_ylabel("Score")
-    fig.suptitle("Scoring-method comparison", weight="bold")
+        ax.set_xticklabels(labels)
+        ax.set_ylim(0, 31)
+        ax.set_title(title, fontsize=11, weight="bold")
+        ax.grid(axis="y", alpha=0.2)
+        ax.set_axisbelow(True)
+    axes[0].set_ylabel("Thumbs-up instances / detections")
+    axes[1].legend(fontsize=8, frameon=False, loc="upper left")
+    fig.suptitle(f"What each scoring method found · confidence ≥ {THRESHOLD:.0%} · IoU ≥ 0.50", weight="bold")
     _save(fig, "score_method_comparison.png")
 
 
@@ -355,8 +348,8 @@ def plot_confusion(photo_val: dict, combined: dict) -> None:
     ):
         grid = np.array(
             [
-                [matrix["image_tp"], matrix["image_fp"]],
-                [matrix["image_fn"], matrix["image_tn"]],
+                [matrix["image_tp"], matrix["image_fn"]],
+                [matrix["image_fp"], matrix["image_tn"]],
             ]
         )
         image = ax.imshow(grid, cmap="Greens", vmin=0)
@@ -380,7 +373,7 @@ def plot_confusion(photo_val: dict, combined: dict) -> None:
         ax.set_xlabel("Prediction")
         ax.set_ylabel("Ground truth")
         fig.colorbar(image, ax=ax, shrink=0.7, label="Images")
-    fig.suptitle("Image-level confusion matrix at 90% confidence", weight="bold")
+    fig.suptitle(f"Image-level confusion matrix at {THRESHOLD:.0%} confidence", weight="bold")
     _save(fig, "confusion_matrix.png", tight=False)
 
 
@@ -411,9 +404,9 @@ def plot_scatter(items: list[dict]) -> None:
         xs = [point["teacher"] for point in points if predicate(point)]
         ys = [point["classifier"] for point in points if predicate(point)]
         ax.scatter(xs, ys, s=26, alpha=0.75, color=color, edgecolor="white", linewidth=0.4, label=label)
-    xs = np.linspace(pipeline.LIKE_MIN_CONF, 0.899, 100)
+    xs = np.linspace(pipeline.LIKE_MIN_CONF, THRESHOLD - 0.001, 100)
     ys = 1 - (1 - THRESHOLD) / (1 - xs)
-    ax.plot(xs, ys, linestyle="--", color=GREEN, linewidth=1.2, label="Noisy-OR = 90%")
+    ax.plot(xs, ys, linestyle="--", color=GREEN, linewidth=1.2, label=f"Noisy-OR = {THRESHOLD:.0%}")
     ax.axvline(pipeline.LIKE_MIN_CONF, color=BLUE, linestyle=":", linewidth=1.2)
     ax.axhline(0.5, color=AMBER, linestyle=":", linewidth=1.2)
     ax.set_xlabel("Teacher 'like' confidence")
@@ -456,25 +449,19 @@ def plot_per_image(photo: dict, webcam: dict) -> None:
     _save(fig, "per_image_confidence.png")
 
 
-def plot_negative_check(total: int, at_30: int, at_90: int) -> None:
-    labels = ["No thumbs up", "False @ 30%", "False @ 90%"]
-    values = [total, at_30, at_90]
-    colors = [GRAY, AMBER, GREEN]
-    fig, ax = plt.subplots(figsize=(6.5, 4))
-    bars = ax.bar(labels, values, color=colors)
+def plot_negative_check(total: int, at_30: int, at_default: int) -> None:
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    values = [at_30, at_default]
+    bars = ax.barh(["30% threshold", f"{THRESHOLD:.0%} threshold"], values,
+                   color=[AMBER, GREEN], height=0.5)
     for bar, value in zip(bars, values):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            value + 0.4,
-            str(value),
-            ha="center",
-            va="bottom",
-            fontsize=11,
-            weight="bold",
-        )
-    ax.set_ylabel("Images")
-    ax.set_ylim(0, max(values) + 4)
-    ax.set_title(f"Negative-only photo check (n={total})", weight="bold")
+        ax.text(value + 0.05, bar.get_y() + bar.get_height() / 2,
+                f"{value}/{total} images ({value / total:.1%})", va="center", fontsize=10)
+    ax.set_xlim(0, max(2, max(values) + 0.6))
+    ax.set_xlabel("Negative images with a false thumbs-up detection")
+    ax.set_title(f"False alarms on {total} negative photos", weight="bold")
+    ax.grid(axis="x", alpha=0.2)
+    ax.set_axisbelow(True)
     _save(fig, "negative_photo_check.png")
 
 
@@ -482,12 +469,228 @@ def _confidence_stats(scores: list[float]) -> dict:
     values = np.array(scores, dtype=float)
     return {
         "n": int(len(values)),
-        "at_least_0_90": int((values >= THRESHOLD).sum()),
+        "at_least_default": int((values >= THRESHOLD).sum()),
         "mean": float(values.mean()) if len(values) else 0.0,
         "median": float(np.median(values)) if len(values) else 0.0,
         "min": float(values.min()) if len(values) else 0.0,
         "max": float(values.max()) if len(values) else 0.0,
     }
+
+
+def plot_optimization(sweep: dict, negative_items: list[dict]) -> dict:
+    """Show the measured threshold tradeoff and export its underlying counts."""
+    rows = []
+    for threshold_text in sorted(sweep["photo_val"], key=float):
+        threshold = float(threshold_text)
+        negatives = _evaluate(negative_items, "ensemble", threshold)
+        row = {"threshold": threshold,
+               "negative_images": negatives["images"],
+               "negative_false_alarm_images": negatives["predicted_images"]}
+        for dataset in ("photo_val", "webcam"):
+            result = sweep[dataset][threshold_text]
+            for key in ("tp", "fp", "fn", "precision", "recall", "f1"):
+                row[f"{dataset}_{key}"] = result[key]
+        rows.append(row)
+    with (OUT / "threshold_optimization.csv").open("w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+    thresholds = [row["threshold"] for row in rows]
+    for dataset, color, label in (("photo_val", BLUE, "Photo validation"),
+                                  ("webcam", GREEN, "Webcam benchmark")):
+        axes[0].plot(thresholds, [row[f"{dataset}_recall"] for row in rows],
+                     marker="o", markersize=3, color=color, label=label)
+    axes[0].set_ylabel("Thumbs-up recall")
+    axes[0].set_ylim(0, 1.05)
+    axes[0].legend(frameon=False)
+    axes[1].step(thresholds, [row["negative_false_alarm_images"] for row in rows],
+                 where="post", color=RED, linewidth=2)
+    axes[1].set_ylabel(f"False-alarm images / {len(negative_items)} negatives")
+    axes[1].set_ylim(-0.1, max(row["negative_false_alarm_images"] for row in rows) + 0.5)
+    for ax in axes:
+        ax.axvline(THRESHOLD, color=AMBER, linestyle="--", label=f"Default {THRESHOLD:.0%}")
+        ax.set_xlabel("Minimum prediction confidence")
+        ax.grid(alpha=0.2)
+    fig.suptitle("Threshold choice: thumbs-up recall and negative-photo false alarms", weight="bold")
+    _save(fig, "threshold_optimization.png")
+    return {f"{row['threshold']:.2f}": row for row in rows}
+
+
+def export_image_diagnostics(groups: dict[str, list[dict]]) -> dict:
+    """Save auditable per-image results and a gallery of hard examples."""
+    rows = []
+    examples = []
+    visualizer_records = []
+    for dataset, items in groups.items():
+        for item in items:
+            detections = _method_detections(item, "ensemble", THRESHOLD)
+            tp, fp, fn = _match(detections, item["truth"])
+            row = {
+                "dataset": dataset, "image": item["image_path"].relative_to(ROOT).as_posix(),
+                "ground_truth_boxes": len(item["truth"]), "predicted_boxes": len(detections),
+                "true_positives": len(tp), "false_positives": len(fp), "false_negatives": fn,
+                "top_confidence": max((det["score"] for det in detections), default=0.0),
+                "candidate_boxes": len(item["candidates"]),
+            }
+            rows.append(row)
+            image = cv2.imread(str(item["image_path"]))
+            visualizer_records.append({
+                **row, "width": int(image.shape[1]), "height": int(image.shape[0]),
+                "truth": item["truth"], "detections": detections,
+            })
+            if fn or fp:
+                examples.append((0, dataset, item, detections, row))
+            elif item["truth"] and detections:
+                examples.append((1, dataset, item, detections, row))
+    with (OUT / "per_image_results.csv").open("w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    _write_visualizer(visualizer_records)
+
+    # Failures first, followed by the lowest-confidence correct detections.
+    examples.sort(key=lambda entry: (entry[0], entry[4]["top_confidence"]))
+    selected = examples[:12]
+    fig, axes = plt.subplots(3, 4, figsize=(15, 11))
+    for ax in axes.flat:
+        ax.axis("off")
+    for ax, (_, dataset, item, detections, row) in zip(axes.flat, selected):
+        image = cv2.imread(str(item["image_path"]))
+        if image is None:
+            continue
+        ax.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        for box in item["truth"]:
+            x1, y1, x2, y2 = box
+            ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
+                                       fill=False, edgecolor=GREEN, linewidth=2))
+        for det in detections:
+            x1, y1, x2, y2 = det["box"]
+            ax.add_patch(plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
+                                       fill=False, edgecolor=BLUE, linewidth=2, linestyle="--"))
+            ax.text(x1, max(0, y1 - 2), f"{det['score']:.2f}", color="white",
+                    fontsize=8, bbox={"facecolor": BLUE, "edgecolor": "none", "pad": 1})
+        ax.set_title(f"{dataset}: {item['stem'][:18]}\nTP {row['true_positives']}  FP {row['false_positives']}  FN {row['false_negatives']}",
+                     fontsize=9, color=RED if row["false_negatives"] or row["false_positives"] else "black")
+        ax.axis("off")
+    fig.suptitle(f"Detection examples at {THRESHOLD:.0%} · green = ground truth · dashed blue = prediction", weight="bold")
+    _save(fig, "detection_examples.png")
+    return {"images": len(rows), "shown_examples": len(selected),
+            "failure_images": sum(bool(row["false_positives"] or row["false_negatives"]) for row in rows)}
+
+
+def _write_visualizer(records: list[dict]) -> None:
+    """Build a portable local image viewer with prediction/label overlays."""
+    payload = json.dumps(records).replace("</", "<\\/")
+    html = r'''<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thumbs-up evaluation viewer</title>
+<style>
+body{font:15px system-ui,sans-serif;background:#0b1220;color:#eef4ff;margin:0;padding:24px;max-width:1100px;margin:auto}
+h1{margin:0 0 8px}p{color:#a8b8cd}a{color:#93c5fd}select,button,input{background:#1d2b40;color:white;border:1px solid #52647e;border-radius:7px;padding:9px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0}.bar input{min-width:260px}
+.stage{background:#151f30;padding:14px;border-radius:12px}svg{display:block;width:100%;max-height:70vh;background:#101827}
+.details{display:flex;gap:20px;flex-wrap:wrap;margin:14px 0;color:#bed0e6}.ok{color:#4ade80}.bad{color:#fb7185}
+.legend span{display:inline-block;margin-right:18px}.swatch{display:inline-block;width:15px;height:15px;margin-right:5px;vertical-align:-2px;border:3px solid}
+</style>
+<h1>Thumbs-up evaluation viewer</h1>
+<p>Inspect every evaluated image. Green solid boxes are labels; blue dashed boxes are predictions. Prediction numbers are model confidence, not accuracy.</p>
+<div class="bar"><select id="dataset"><option value="all">All datasets</option><option value="photo_val">Photo validation</option><option value="webcam">Webcam benchmark</option><option value="train_negatives">Training negatives</option></select>
+<select id="outcome"><option value="all">All outcomes</option><option value="errors">Errors only</option><option value="correct">Correct detections</option><option value="negative">No thumbs up</option></select>
+<input id="search" placeholder="Search filename"><button id="prev">Previous</button><button id="next">Next</button><span id="position"></span></div>
+<div class="stage"><svg id="scene" xmlns="http://www.w3.org/2000/svg"></svg><div class="details" id="details"></div>
+<div class="legend"><span><i class="swatch" style="border-color:#4ade80"></i>Ground truth</span><span><i class="swatch" style="border-color:#60a5fa"></i>Prediction</span></div></div>
+<p><a href="per_image_results.csv">Download per-image results</a> · <a href="THUMBS_UP_EVALUATION.md">Read evaluation report</a></p>
+<script>const records=__DATA__;let shown=records,position=0;
+const $=id=>document.getElementById(id);const ns='http://www.w3.org/2000/svg';
+function filter(){const ds=$('dataset').value,oc=$('outcome').value,q=$('search').value.toLowerCase();shown=records.filter(r=>(ds==='all'||r.dataset===ds)&&r.image.toLowerCase().includes(q)&&(oc==='all'||(oc==='errors'&&(r.false_positives||r.false_negatives))||(oc==='correct'&&r.true_positives)||(oc==='negative'&&!r.ground_truth_boxes)));position=0;render()}
+function element(tag,attrs){const e=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e}
+function render(){const svg=$('scene');svg.replaceChildren();if(!shown.length){$('details').textContent='No images match the filters.';$('position').textContent='0 / 0';return}const r=shown[position];svg.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);svg.append(element('image',{href:'../'+r.image,x:0,y:0,width:r.width,height:r.height}));
+for(const box of r.truth){const [x1,y1,x2,y2]=box;svg.append(element('rect',{x:x1,y:y1,width:x2-x1,height:y2-y1,fill:'none',stroke:'#4ade80','stroke-width':Math.max(2,r.width/250)}))}
+for(const det of r.detections){const [x1,y1,x2,y2]=det.box;svg.append(element('rect',{x:x1,y:y1,width:x2-x1,height:y2-y1,fill:'none',stroke:'#60a5fa','stroke-width':Math.max(2,r.width/250),'stroke-dasharray':'8 5'}));const t=element('text',{x:x1+4,y:Math.max(18,y1-5),fill:'#fff','font-size':Math.max(16,r.width/35),'font-weight':'bold'});t.textContent=(det.score*100).toFixed(1)+'%';svg.append(t)}
+$('position').textContent=`${position+1} / ${shown.length}`;$('details').replaceChildren();for(const text of [r.dataset,r.image.split('/').pop(),`TP ${r.true_positives}`,`FP ${r.false_positives}`,`FN ${r.false_negatives}`,`Candidates ${r.candidate_boxes}`]){const s=document.createElement('span');s.textContent=text;if(text.startsWith('FP ')&&r.false_positives||text.startsWith('FN ')&&r.false_negatives)s.className='bad';$('details').append(s)}}
+for(const id of ['dataset','outcome','search'])$(id).addEventListener(id==='search'?'input':'change',filter);$('prev').onclick=()=>{if(shown.length){position=(position+shown.length-1)%shown.length;render()}};$('next').onclick=()=>{if(shown.length){position=(position+1)%shown.length;render()}};render();</script></html>'''
+    (OUT / "evaluation_viewer.html").write_text(html.replace("__DATA__", payload))
+
+
+def plot_outcomes(groups: dict[str, list[dict]]) -> None:
+    """Compare box-level outcomes without hiding the webcam misses."""
+    names = ("Photo validation", "Webcam benchmark")
+    results = [_evaluate(groups[key], "ensemble", THRESHOLD) for key in ("photo_val", "webcam")]
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    x = np.arange(2)
+    tp = np.array([result["tp"] for result in results])
+    fn = np.array([result["fn"] for result in results])
+    fp = np.array([result["fp"] for result in results])
+    ax.bar(x, tp, color=GREEN, label="Correct")
+    ax.bar(x, fn, bottom=tp, color=AMBER, label="Missed")
+    ax.bar(x, fp, bottom=tp + fn, color=RED, label="False detection")
+    for index, result in enumerate(results):
+        ax.text(index, tp[index] + fn[index] + fp[index] + 0.3,
+                f"Recall {result['recall']:.1%}  ·  F1 {result['f1']:.1%}", ha="center", fontsize=9)
+    ax.set_xticks(x, names)
+    ax.set_ylim(0, max(tp + fn + fp) + 4)
+    ax.set_ylabel("Thumbs-up boxes")
+    ax.legend(frameon=False)
+    ax.set_title(f"Detection outcomes at {THRESHOLD:.0%} confidence", weight="bold")
+    _save(fig, "detection_outcomes.png")
+
+
+def plot_thumbs_up_performance(photo: dict, webcam: dict) -> None:
+    """Present only the final app's thumbs-up detection metrics."""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    datasets = ("Photo validation", "Webcam crops")
+    x = np.arange(2)
+    for offset, key, label, color in ((-0.23, "precision", "Precision", BLUE),
+                                       (0, "recall", "Recall", AMBER),
+                                       (0.23, "f1", "F1", GREEN)):
+        bars = ax.bar(x + offset, [photo[key], webcam[key]], 0.22, label=label, color=color)
+        ax.bar_label(bars, labels=[f"{value:.1%}" for value in (photo[key], webcam[key])], padding=3)
+    ax.set_xticks(x, datasets)
+    ax.set_ylim(0, 1.13)
+    ax.set_ylabel("Thumbs-up detection score")
+    ax.set_title(f"Final app · thumbs-up performance at {THRESHOLD:.0%} confidence", weight="bold")
+    ax.legend(frameon=False)
+    ax.grid(axis="y", alpha=0.2)
+    ax.set_axisbelow(True)
+    _save(fig, "thumbs_up_performance.png")
+
+
+def _wilson(successes: int, total: int) -> tuple[float, float]:
+    """Wilson 95% interval for a binomial proportion."""
+    z = 1.96
+    p = successes / total
+    center = (p + z * z / (2 * total)) / (1 + z * z / total)
+    half = z * np.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / (1 + z * z / total)
+    return float(center - half), float(center + half)
+
+
+def plot_uncertainty(photo: dict, webcam: dict, negative_val: dict, negative_train: dict) -> dict:
+    samples = [
+        ("Photo box recall", photo["tp"], photo["tp"] + photo["fn"]),
+        ("Webcam box recall", webcam["tp"], webcam["tp"] + webcam["fn"]),
+        ("Photo negative specificity", negative_val["image_tn"], negative_val["images"]),
+        ("Train negative specificity", negative_train["image_tn"], negative_train["images"]),
+    ]
+    fig, ax = plt.subplots(figsize=(9, 4.6))
+    output = {}
+    for index, (name, successes, total) in enumerate(samples):
+        low, high = _wilson(successes, total)
+        value = successes / total
+        ax.plot([low, high], [index, index], color=BLUE, linewidth=5, solid_capstyle="round")
+        ax.scatter([value], [index], color=GREEN, s=70, zorder=3)
+        ax.text(min(1.02, value + 0.015), index - 0.13, f"{successes}/{total}", fontsize=9)
+        output[name] = {"successes": successes, "total": total, "rate": value,
+                        "wilson_95_low": low, "wilson_95_high": high}
+    ax.set_yticks(range(len(samples)), [name for name, _, _ in samples])
+    ax.set_xlim(0.55, 1.13)
+    ax.set_ylim(len(samples) - 0.5, -0.5)
+    ax.set_xlabel("Observed rate (dot) and Wilson 95% interval (line)")
+    ax.grid(axis="x", alpha=0.2)
+    ax.set_title("Sample-size uncertainty · training negatives are not independent", weight="bold")
+    _save(fig, "evaluation_uncertainty.png")
+    return output
 
 
 def main() -> None:
@@ -501,6 +704,9 @@ def main() -> None:
         TRAIN_IMAGES, TRAIN_LABELS, positives=False, photos_only=True
     )
     negative_items = negative_val + negative_train
+    diagnostics = export_image_diagnostics({"photo_val": photo_items, "webcam": webcam_items,
+                                            "train_negatives": negative_train})
+    plot_outcomes({"photo_val": photo_items, "webcam": webcam_items})
 
     methods = ("teacher", "classifier", "ensemble")
     method_results = {
@@ -523,26 +729,32 @@ def main() -> None:
             for threshold in thresholds
         },
     }
+    optimization = plot_optimization(sweep, negative_items)
 
     photo_at_zero = _evaluate(photo_items, "ensemble", 0.0)
     webcam_at_zero = _evaluate(webcam_items, "ensemble", 0.0)
-    photo_at_90 = _evaluate(photo_items, "ensemble", THRESHOLD)
-    webcam_at_90 = _evaluate(webcam_items, "ensemble", THRESHOLD)
+    photo_at_default = _evaluate(photo_items, "ensemble", THRESHOLD)
+    webcam_at_default = _evaluate(webcam_items, "ensemble", THRESHOLD)
     negative_at_30 = _evaluate(negative_items, "ensemble", 0.30)
-    negative_at_90 = _evaluate(negative_items, "ensemble", THRESHOLD)
+    negative_at_default = _evaluate(negative_items, "ensemble", THRESHOLD)
+    negative_val_at_default = _evaluate(negative_val, "ensemble", THRESHOLD)
+    negative_train_at_default = _evaluate(negative_train, "ensemble", THRESHOLD)
     combined_items = photo_items + negative_train
-    combined_at_90 = _evaluate(combined_items, "ensemble", THRESHOLD)
+    combined_at_default = _evaluate(combined_items, "ensemble", THRESHOLD)
+    plot_thumbs_up_performance(photo_at_default, webcam_at_default)
+    uncertainty = plot_uncertainty(photo_at_default, webcam_at_default,
+                                   negative_val_at_default, negative_train_at_default)
 
     plot_confidence(photo_at_zero["tp_scores"], webcam_at_zero["tp_scores"])
     plot_method_comparison(method_results)
     plot_threshold_curve(sweep)
-    plot_confusion(photo_at_90, combined_at_90)
+    plot_confusion(photo_at_default, combined_at_default)
     plot_scatter(photo_items)
     plot_per_image(photo_at_zero, webcam_at_zero)
     plot_negative_check(
         len(negative_items),
         negative_at_30["predicted_images"],
-        negative_at_90["predicted_images"],
+        negative_at_default["predicted_images"],
     )
 
     summary = {
@@ -587,11 +799,11 @@ def main() -> None:
         },
         "confusion_image_level": {
             "photo_val": {
-                key: photo_at_90[key]
+                key: photo_at_default[key]
                 for key in ("image_tp", "image_fp", "image_fn", "image_tn")
             },
             "photo_val_plus_train_negatives": {
-                key: combined_at_90[key]
+                key: combined_at_default[key]
                 for key in ("image_tp", "image_fp", "image_fn", "image_tn")
             },
         },
@@ -602,10 +814,13 @@ def main() -> None:
         "negative_check": {
             "images": len(negative_items),
             "with_detections_at_0_30": negative_at_30["predicted_images"],
-            "with_detections_at_0_90": negative_at_90["predicted_images"],
+            "with_detections_at_default": negative_at_default["predicted_images"],
             "object_false_positives_at_0_30": negative_at_30["fp"],
-            "object_false_positives_at_0_90": negative_at_90["fp"],
+            "object_false_positives_at_default": negative_at_default["fp"],
         },
+        "threshold_optimization": optimization,
+        "diagnostics": diagnostics,
+        "uncertainty": uncertainty,
     }
     (OUT / "metrics.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary["score_methods"], indent=2))

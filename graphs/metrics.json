@@ -15,50 +15,50 @@
       "images": 61
     }
   },
-  "threshold": 0.9,
+  "threshold": 0.8,
   "score_methods": {
     "photo_val": {
       "teacher": {
-        "tp": 1,
+        "tp": 19,
         "fp": 0,
-        "fn": 25,
+        "fn": 7,
         "precision": 1.0,
-        "recall": 0.038461538461538464,
-        "f1": 0.07407407407407407
+        "recall": 0.7307692307692307,
+        "f1": 0.8444444444444443
       },
       "classifier": {
-        "tp": 6,
+        "tp": 9,
         "fp": 2,
-        "fn": 20,
-        "precision": 0.75,
-        "recall": 0.23076923076923078,
-        "f1": 0.3529411764705882
+        "fn": 17,
+        "precision": 0.8181818181818182,
+        "recall": 0.34615384615384615,
+        "f1": 0.4864864864864865
       },
       "ensemble": {
-        "tp": 25,
+        "tp": 26,
         "fp": 0,
-        "fn": 1,
+        "fn": 0,
         "precision": 1.0,
-        "recall": 0.9615384615384616,
-        "f1": 0.9803921568627451
+        "recall": 1.0,
+        "f1": 1.0
       }
     },
     "webcam": {
       "teacher": {
-        "tp": 0,
+        "tp": 11,
         "fp": 0,
-        "fn": 19,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0
+        "fn": 8,
+        "precision": 1.0,
+        "recall": 0.5789473684210527,
+        "f1": 0.7333333333333334
       },
       "classifier": {
-        "tp": 13,
+        "tp": 16,
         "fp": 1,
-        "fn": 6,
-        "precision": 0.9285714285714286,
-        "recall": 0.6842105263157895,
-        "f1": 0.7878787878787878
+        "fn": 3,
+        "precision": 0.9411764705882353,
+        "recall": 0.8421052631578947,
+        "f1": 0.8888888888888888
       },
       "ensemble": {
         "tp": 17,
@@ -317,7 +317,7 @@
   "confidence": {
     "photo_val": {
       "n": 26,
-      "at_least_0_90": 25,
+      "at_least_default": 26,
       "mean": 0.9857570532302149,
       "median": 0.9997185194057394,
       "min": 0.8102891309587541,
@@ -325,7 +325,7 @@
     },
     "webcam": {
       "n": 17,
-      "at_least_0_90": 17,
+      "at_least_default": 17,
       "mean": 0.9876267708429587,
       "median": 0.999908556313585,
       "min": 0.9023834521959486,
@@ -335,8 +335,283 @@
   "negative_check": {
     "images": 61,
     "with_detections_at_0_30": 1,
-    "with_detections_at_0_90": 0,
+    "with_detections_at_default": 0,
     "object_false_positives_at_0_30": 1,
-    "object_false_positives_at_0_90": 0
+    "object_false_positives_at_default": 0
+  },
+  "threshold_optimization": {
+    "0.30": {
+      "threshold": 0.3,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.35": {
+      "threshold": 0.35,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.40": {
+      "threshold": 0.4,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.45": {
+      "threshold": 0.45,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.50": {
+      "threshold": 0.5,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.55": {
+      "threshold": 0.55,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.60": {
+      "threshold": 0.6,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.65": {
+      "threshold": 0.65,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.70": {
+      "threshold": 0.7,
+      "negative_images": 61,
+      "negative_false_alarm_images": 1,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.75": {
+      "threshold": 0.75,
+      "negative_images": 61,
+      "negative_false_alarm_images": 0,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.80": {
+      "threshold": 0.8,
+      "negative_images": 61,
+      "negative_false_alarm_images": 0,
+      "photo_val_tp": 26,
+      "photo_val_fp": 0,
+      "photo_val_fn": 0,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 1.0,
+      "photo_val_f1": 1.0,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.85": {
+      "threshold": 0.85,
+      "negative_images": 61,
+      "negative_false_alarm_images": 0,
+      "photo_val_tp": 25,
+      "photo_val_fp": 0,
+      "photo_val_fn": 1,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 0.9615384615384616,
+      "photo_val_f1": 0.9803921568627451,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.90": {
+      "threshold": 0.9,
+      "negative_images": 61,
+      "negative_false_alarm_images": 0,
+      "photo_val_tp": 25,
+      "photo_val_fp": 0,
+      "photo_val_fn": 1,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 0.9615384615384616,
+      "photo_val_f1": 0.9803921568627451,
+      "webcam_tp": 17,
+      "webcam_fp": 0,
+      "webcam_fn": 2,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8947368421052632,
+      "webcam_f1": 0.9444444444444444
+    },
+    "0.95": {
+      "threshold": 0.95,
+      "negative_images": 61,
+      "negative_false_alarm_images": 0,
+      "photo_val_tp": 24,
+      "photo_val_fp": 0,
+      "photo_val_fn": 2,
+      "photo_val_precision": 1.0,
+      "photo_val_recall": 0.9230769230769231,
+      "photo_val_f1": 0.9600000000000001,
+      "webcam_tp": 16,
+      "webcam_fp": 0,
+      "webcam_fn": 3,
+      "webcam_precision": 1.0,
+      "webcam_recall": 0.8421052631578947,
+      "webcam_f1": 0.9142857142857143
+    }
+  },
+  "diagnostics": {
+    "images": 99,
+    "shown_examples": 12,
+    "failure_images": 2
+  },
+  "uncertainty": {
+    "Photo box recall": {
+      "successes": 26,
+      "total": 26,
+      "rate": 1.0,
+      "wilson_95_low": 0.8712669561953784,
+      "wilson_95_high": 1.0000000000000002
+    },
+    "Webcam box recall": {
+      "successes": 17,
+      "total": 19,
+      "rate": 0.8947368421052632,
+      "wilson_95_low": 0.686054495051583,
+      "wilson_95_high": 0.9706420586049034
+    },
+    "Photo negative specificity": {
+      "successes": 11,
+      "total": 11,
+      "rate": 1.0,
+      "wilson_95_low": 0.7411599827511859,
+      "wilson_95_high": 1.0
+    },
+    "Train negative specificity": {
+      "successes": 50,
+      "total": 50,
+      "rate": 1.0,
+      "wilson_95_low": 0.9286499658256813,
+      "wilson_95_high": 1.0
+    }
   }
 }

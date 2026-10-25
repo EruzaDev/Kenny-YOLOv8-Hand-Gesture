@@ -28,6 +28,7 @@ runs/
 dataset_all/
 dataset_cls/
 dataset_cls_multi/
+dataset_cls_reviewed/
 dataset_crops/
 dataset_crops_multi/
 dataset_photos/

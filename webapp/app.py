@@ -44,6 +44,7 @@ LIKE_MIN_CONF = 0.35
 FALLBACK_MAX_HAND_CONF = 0.25
 FALLBACK_MIN_AREA_FRACTION = 0.02
 CROP_MARGINS = (0.4, 0.7, 1.0)
+DEFAULT_CONFIDENCE = 0.80
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024
@@ -269,9 +270,9 @@ def health():
 @app.post("/predict")
 def predict():
     try:
-        conf = float(request.form.get("conf", 0.30))
+        conf = float(request.form.get("conf", DEFAULT_CONFIDENCE))
     except (TypeError, ValueError):
-        conf = 0.30
+        conf = DEFAULT_CONFIDENCE
     conf = min(max(conf, 0.05), 0.95)
 
     image = decode_image()
@@ -287,7 +288,6 @@ def predict():
         detections = run_pipeline(image, conf)
 
     height, width = image.shape[:2]
-    thumbs = [d for d in detections if d["class_id"] == 0]
     top = max((d["confidence"] for d in detections), default=0.0)
     return jsonify(
         {
@@ -295,7 +295,7 @@ def predict():
             "width": width,
             "height": height,
             "count": len(detections),
-            "thumbs_up": bool(thumbs),
+            "thumbs_up": bool(detections),
             "top_confidence": top,
         }
     )
