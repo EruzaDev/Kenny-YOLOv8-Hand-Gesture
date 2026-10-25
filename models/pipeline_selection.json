@@ -1,0 +1,78 @@
+{
+  "task": "thumbs_up",
+  "graphs_directory": "graphs",
+  "graph_metrics": "graphs/metrics.json",
+  "pipeline": {
+    "hand_detector": "models/teacher_haGRID_yolo26n.pt",
+    "classifier": "models/thumbs_up_classifier.pt",
+    "fallback_detector": "models/thumbs_up_best.pt",
+    "reported_classes": [
+      "thumbs_up"
+    ]
+  },
+  "gating": {
+    "teacher_imgsz": 640,
+    "teacher_conf": 0.08,
+    "teacher_like_min_conf": 0.35,
+    "classifier_fallback_max_teacher_conf": 0.25,
+    "classifier_fallback_min_box_fraction": 0.02,
+    "classifier_fallback_min_thumbs_prob": 0.5,
+    "crop_margins": [
+      0.4,
+      0.7,
+      1.0
+    ],
+    "classifier_aggregation": "max thumbs-up probability over crop margins",
+    "nms_iou": 0.65,
+    "web_app_default_confidence": 0.9
+  },
+  "why": "Full-frame detections were under-confident because hands are small and many were unlabelled. The teacher relabelled every hand, and the YOLOv8 classifier is evaluated on close-up crops at several margins, matching the webcam view.",
+  "photo_validation": {
+    "images_in_dataset": 30,
+    "images_with_thumbs_up": 19,
+    "thumbs_up_instances": 26,
+    "true_positives": 26,
+    "false_negatives": 0,
+    "false_positives_vs_pseudo_labels": 0,
+    "true_positives_confidence_at_least_0_90": 25,
+    "true_positive_mean_confidence": 0.9858,
+    "true_positive_median_confidence": 0.9997
+  },
+  "webcam_crop_benchmark": {
+    "images_in_dataset": 19,
+    "images_with_thumbs_up": 19,
+    "true_positives": 17,
+    "false_positives": 0,
+    "false_negatives": 2,
+    "true_positives_confidence_at_least_0_90": 17,
+    "true_positive_mean_confidence": 0.9876,
+    "true_positive_median_confidence": 0.9999
+  },
+  "negative_photo_check": {
+    "photo_validation_images_without_thumbs_up": 11,
+    "photo_validation_false_thumbs_up": 0,
+    "photo_train_images_without_thumbs_up": 50,
+    "photo_train_false_thumbs_up": 1,
+    "photo_train_false_thumbs_up_at_least_0_90": 0,
+    "photo_train_false_thumbs_up_example_confidence": 0.7164
+  },
+  "notes": "Validation labels are teacher pseudo-labels. On clear close-up thumbs-up crops the app returns >=0.90 confidence. The teacher 'like' result is combined with the YOLOv8 classifier using noisy-OR. Only thumbs-up detections are returned; other teacher classes are used only for gating. Low-confidence teacher 'like' boxes are ignored, and the classifier fallback requires a reasonably sized hand box.",
+  "at_default_confidence_0_90": {
+    "photo_val": {
+      "tp": 25,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.9615,
+      "f1": 0.9804
+    },
+    "webcam": {
+      "tp": 17,
+      "fp": 0,
+      "fn": 2,
+      "precision": 1.0,
+      "recall": 0.8947,
+      "f1": 0.9444
+    }
+  }
+}

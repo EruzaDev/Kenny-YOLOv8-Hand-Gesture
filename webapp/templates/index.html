@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ThumbScan — YOLOv8 Thumbs-Up Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070b12;
+      --bg-soft: #0c1220;
+      --panel: rgba(16, 24, 39, 0.78);
+      --panel-solid: #101827;
+      --line: rgba(148, 163, 184, 0.16);
+      --text: #e7edf7;
+      --muted: #8b9bb4;
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.14);
+      --amber: #f59e0b;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --radius: 20px;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 8% -10%, rgba(34, 197, 94, 0.13), transparent 60%),
+        radial-gradient(800px 500px at 95% 0%, rgba(96, 165, 250, 0.12), transparent 55%),
+        radial-gradient(700px 700px at 50% 115%, rgba(168, 85, 247, 0.08), transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 28px 22px 48px; }
+
+    /* header */
+    header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo {
+      width: 46px; height: 46px; display: grid; place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(145deg, rgba(34,197,94,.26), rgba(34,197,94,.06));
+      border: 1px solid rgba(34,197,94,.38);
+      box-shadow: 0 0 30px rgba(34,197,94,.14), inset 0 1px 0 rgba(255,255,255,.09);
+    }
+    .logo svg { width: 24px; height: 24px; fill: var(--green); }
+    .brand h1 { margin: 0; font-size: 20px; letter-spacing: -0.02em; font-weight: 800; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+      border: 1px solid var(--line); background: rgba(15, 23, 42, .55); color: var(--muted);
+      letter-spacing: .02em;
+    }
+    .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .chip.ok { color: #86efac; border-color: rgba(34,197,94,.35); background: var(--green-soft); }
+    .chip.ok .dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    .chip.bad { color: #fca5a5; border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.1); }
+    .chip.bad .dot { background: var(--red); }
+
+    /* layout */
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+    @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255,255,255,.04);
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 16px 18px; border-bottom: 1px solid var(--line);
+    }
+    .tabs { display: inline-flex; gap: 4px; padding: 4px; background: rgba(2,6,23,.55); border: 1px solid var(--line); border-radius: 12px; }
+    .tab {
+      border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600;
+      padding: 8px 14px; border-radius: 9px; cursor: pointer; transition: .18s ease;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: #dcfce7; background: rgba(34,197,94,.16); box-shadow: inset 0 0 0 1px rgba(34,197,94,.25); }
+    .card-body { padding: 18px; }
+
+    /* viewport */
+    .viewport {
+      position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden;
+      background:
+        radial-gradient(600px 300px at 50% 0%, rgba(34,197,94,.06), transparent 70%),
+        #05080f;
+      border: 1px solid rgba(148,163,184,.14);
+    }
+    .viewport video, .viewport img.preview {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block;
+      background: #05080f;
+    }
+    .viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .mirrored { transform: scaleX(-1); }
+    .placeholder {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; text-align: center; padding: 24px; color: var(--muted);
+    }
+    .placeholder svg { width: 54px; height: 54px; stroke: rgba(148,163,184,.45); }
+    .placeholder strong { color: var(--text); font-size: 15px; font-weight: 600; }
+    .placeholder span { font-size: 12.5px; max-width: 340px; line-height: 1.5; }
+    .placeholder.hidden { display: none; }
+
+    .live-badge {
+      position: absolute; top: 12px; left: 12px; z-index: 3;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      background: rgba(2,6,23,.72); border: 1px solid var(--line); color: var(--muted); backdrop-filter: blur(8px);
+    }
+    .live-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .live-badge.ok { color: #bbf7d0; border-color: rgba(34,197,94,.45); background: rgba(6, 78, 59, .68); }
+    .live-badge.ok .dot { background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.4s infinite; }
+    .live-badge.other { color: #fde68a; border-color: rgba(245,158,11,.4); }
+    .live-badge.other .dot { background: var(--amber); }
+    @keyframes pulse { 50% { opacity: .35; } }
+
+    /* controls */
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 0; border-radius: 11px; padding: 11px 17px; font: inherit; font-size: 13px; font-weight: 650;
+      cursor: pointer; transition: transform .12s ease, filter .18s ease, background .18s ease;
+      color: #04120a; background: linear-gradient(180deg, #4ade80, #22c55e);
+      box-shadow: 0 8px 24px rgba(34,197,94,.22), inset 0 1px 0 rgba(255,255,255,.3);
+    }
+    .btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; filter: none; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn.ghost {
+      color: var(--text); background: rgba(148,163,184,.1); border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .btn.ghost:hover { background: rgba(148,163,184,.16); }
+    .btn.danger { color: #fecaca; background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.28); box-shadow: none; }
+
+    .range-group { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .range-group label { font-size: 11.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+    .range-group output { font-family: var(--mono); font-size: 11.5px; color: #bbf7d0; min-width: 34px; text-align: right; }
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none; width: 120px; height: 4px; border-radius: 99px;
+      background: linear-gradient(90deg, var(--green) 30%, rgba(148,163,184,.22) 30%); outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+      background: #dcfce7; border: 2px solid #22c55e; box-shadow: 0 0 10px rgba(34,197,94,.5); cursor: pointer;
+    }
+    .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
+    .switch input { accent-color: var(--green); width: 15px; height: 15px; }
+
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .meta {
+      font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+      padding: 5px 9px; border-radius: 7px; background: rgba(2,6,23,.45); border: 1px solid var(--line);
+    }
+    .meta b { color: #cbd5e1; font-weight: 500; }
+
+    /* upload */
+    .dropzone {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      min-height: 168px; padding: 24px; text-align: center; cursor: pointer;
+      border: 1.5px dashed rgba(148,163,184,.3); border-radius: 16px;
+      background: rgba(2,6,23,.35); transition: .18s ease;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.05); }
+    .dropzone svg { width: 34px; height: 34px; stroke: var(--muted); }
+    .dropzone strong { font-size: 13.5px; font-weight: 600; }
+    .dropzone span { font-size: 12px; color: var(--muted); }
+    .dropzone em { font-style: normal; color: #86efac; }
+    .upload-viewport { margin-top: 16px; display: none; }
+    .upload-viewport.show { display: block; }
+
+    /* sidebar */
+    .side { display: flex; flex-direction: column; gap: 16px; }
+    .status-card { padding: 18px; }
+    .status-eyebrow { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .status-title { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
+    .status-title .orb { width: 11px; height: 11px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 4px rgba(148,163,184,.1); }
+    .status-card.ok .status-title { color: #86efac; }
+    .status-card.ok .orb { background: var(--green); box-shadow: 0 0 14px var(--green), 0 0 0 4px rgba(34,197,94,.13); }
+    .status-card.other .status-title { color: #fcd34d; }
+    .status-card.other .orb { background: var(--amber); box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
+    .status-sub { margin-top: 7px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+    .panel-title { display: flex; align-items: center; justify-content: space-between; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+    .panel-title h2 { margin: 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .panel-title span { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+    .detections { padding: 12px; display: flex; flex-direction: column; gap: 9px; max-height: 360px; overflow-y: auto; }
+    .empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .det {
+      padding: 12px; border-radius: 12px; background: rgba(2,6,23,.42); border: 1px solid var(--line);
+      animation: slidein .22s ease both;
+    }
+    @keyframes slidein { from { opacity: 0; transform: translateY(4px); } }
+    .det-top { display: flex; align-items: center; gap: 9px; }
+    .det-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+    .det-name { font-size: 13px; font-weight: 650; }
+    .det-score { margin-left: auto; font-family: var(--mono); font-size: 12px; font-weight: 600; }
+    .bar { height: 5px; border-radius: 99px; background: rgba(148,163,184,.14); margin: 9px 0 7px; overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: inherit; transition: width .25s ease; }
+    .det-coords { font-family: var(--mono); font-size: 9.5px; color: var(--muted); }
+
+    .footnote { padding: 14px 17px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .footnote b { color: #cbd5e1; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 12px 17px; border-top: 1px solid var(--line); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); }
+    .legend i { width: 8px; height: 8px; border-radius: 2px; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 16px);
+      background: #1f2937; color: #fee2e2; border: 1px solid rgba(248,113,113,.4);
+      padding: 11px 16px; border-radius: 11px; font-size: 12.5px; opacity: 0; pointer-events: none;
+      transition: .22s ease; z-index: 50; box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .hidden { display: none !important; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.22); border-radius: 99px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h3v12Zm3 0h7.6a3 3 0 0 0 2.9-2.2l1.4-5.4a3 3 0 0 0-2.9-3.8h-4.1l.7-3.2a2.5 2.5 0 0 0-4.6-1.9L7 9.6V22h3Z"/></svg>
+        </div>
+        <div>
+          <h1>ThumbScan</h1>
+          <p>YOLOv8 real-time thumbs-up detector</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="chip" id="modelChip"><span class="dot"></span><span id="modelChipText">Model loading</span></span>
+        <span class="chip ok"><span class="dot"></span>YOLOv8n · CPU</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="card-head">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="live" role="tab">Live Camera</button>
+            <button class="tab" data-tab="upload" role="tab">Upload Image</button>
+          </div>
+          <span class="meta" id="deviceMeta">camera idle</span>
+        </div>
+        <div class="card-body">
+          <div id="livePane">
+            <div class="viewport" id="liveViewport">
+              <video id="video" playsinline autoplay muted></video>
+              <canvas id="overlay"></canvas>
+              <div class="live-badge" id="liveBadge"><span class="dot"></span><span id="liveBadgeText">Camera off</span></div>
+              <div class="placeholder" id="livePlaceholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor">
+                  <path d="M15 10l4.55-2.28A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.45.9L15 14"/><rect x="3" y="6" width="12" height="12" rx="2"/>
+                </svg>
+                <strong>Start the camera to scan a thumbs up</strong>
+                <span>Hold your hand toward the camera. Boxes, labels and confidence scores are drawn live.</span>
+              </div>
+            </div>
+            <div class="controls">
+              <button class="btn" id="startBtn">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Start Camera
+              </button>
+              <button class="btn ghost" id="stopBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                Stop
+              </button>
+              <button class="btn ghost" id="snapshotBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                Save Snapshot
+              </button>
+              <div class="range-group">
+                <label for="confRange">Confidence</label>
+                <input type="range" id="confRange" min="10" max="90" step="1" value="90" />
+                <output id="confOut">90%</output>
+              </div>
+            </div>
+            <div class="meta" style="margin-top:12px">Only thumbs-up gestures are reported. Ctrl/Cmd + click snapshot to open.</div>
+            <div class="meta-row">
+              <span class="meta">FPS <b id="fps">—</b></span>
+              <span class="meta">Frame <b id="frameRes">—</b></span>
+              <span class="meta">Inference <b id="latency">—</b></span>
+            </div>
+          </div>
+
+          <div id="uploadPane" class="hidden">
+            <label class="dropzone" id="dropzone">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor">
+                <path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+              </svg>
+              <strong>Drop a photo here or <em>browse</em></strong>
+              <span>JPG, PNG or WebP · max 12 MB</span>
+              <input type="file" id="fileInput" accept="image/*" hidden />
+            </label>
+            <div class="viewport upload-viewport" id="uploadViewport">
+              <img class="preview" id="uploadImg" alt="Uploaded preview" />
+              <canvas id="uploadOverlay"></canvas>
+            </div>
+            <div class="controls" id="uploadControls" style="display:none">
+              <button class="btn" id="detectBtn">Run Detection</button>
+              <button class="btn ghost" id="clearBtn">Clear</button>
+              <div class="range-group">
+                <label for="confRange2">Confidence</label>
+                <input type="range" id="confRange2" min="10" max="90" step="1" value="90" />
+                <output id="confOut2">90%</output>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div class="card status-card" id="statusCard">
+          <div class="status-eyebrow">Detection status</div>
+          <div class="status-title"><span class="orb"></span><span id="statusTitle">Waiting for camera</span></div>
+          <div class="status-sub" id="statusSub">Start the camera or upload an image to begin scanning.</div>
+        </div>
+
+        <div class="card">
+          <div class="panel-title"><h2>Detections</h2><span id="detCount">0 objects</span></div>
+          <div class="detections" id="detList">
+            <div class="empty">No detections yet.<br />A thumbs up box will appear here with its confidence score.</div>
+          </div>
+          <div class="legend">
+            <span><i style="background:#22c55e"></i>Thumbs up</span>
+          </div>
+          <div class="footnote">
+            <b>Class:</b> thumbs_up only. Hand detector + YOLOv8 classifier, 90% default confidence.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const video = $("video");
+      const overlay = $("overlay");
+      const liveViewport = $("liveViewport");
+      const liveBadge = $("liveBadge");
+      const liveBadgeText = $("liveBadgeText");
+      const livePlaceholder = $("livePlaceholder");
+      const startBtn = $("startBtn");
+      const stopBtn = $("stopBtn");
+      const snapshotBtn = $("snapshotBtn");
+      const confRange = $("confRange");
+      const confOut = $("confOut");
+      const confRange2 = $("confRange2");
+      const confOut2 = $("confOut2");
+      const uploadImg = $("uploadImg");
+      const uploadOverlay = $("uploadOverlay");
+      const uploadViewport = $("uploadViewport");
+      const uploadControls = $("uploadControls");
+      const dropzone = $("dropzone");
+      const fileInput = $("fileInput");
+      const detectBtn = $("detectBtn");
+      const clearBtn = $("clearBtn");
+      const detList = $("detList");
+      const detCount = $("detCount");
+      const statusCard = $("statusCard");
+      const statusTitle = $("statusTitle");
+      const statusSub = $("statusSub");
+      const fpsEl = $("fps");
+      const frameResEl = $("frameRes");
+      const latencyEl = $("latency");
+      const deviceMeta = $("deviceMeta");
+      const modelChip = $("modelChip");
+      const modelChipText = $("modelChipText");
+      const toast = $("toast");
+
+      const state = {
+        stream: null,
+        running: false,
+        inFlight: false,
+        mirrored: true,
+        lastDetections: [],
+        lastSource: null,
+        fps: 0,
+        frames: 0,
+        fpsStart: performance.now(),
+        uploadFile: null,
+        uploadDetections: [],
+        conf: 0.90,
+      };
+
+      const captureCanvas = document.createElement("canvas");
+
+      function toastMsg(msg) {
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => toast.classList.remove("show"), 3600);
+      }
+
+      async function checkHealth() {
+        try {
+          const r = await fetch("/health");
+          const d = await r.json();
+          if (d.ok) {
+            modelChip.className = "chip ok";
+            modelChipText.textContent = "Model ready";
+          } else {
+            modelChip.className = "chip bad";
+            modelChipText.textContent = "Model missing";
+          }
+        } catch {
+          modelChip.className = "chip bad";
+          modelChipText.textContent = "Server offline";
+        }
+      }
+      checkHealth();
+
+      function syncConf(val, from) {
+        const v = Math.min(0.9, Math.max(0.1, val / 100));
+        state.conf = v;
+        confOut.textContent = `${val}%`;
+        confOut2.textContent = `${val}%`;
+        confRange.value = val;
+        confRange2.value = val;
+        const pct = ((val - 10) / 80) * 100;
+        [confRange, confRange2].forEach((el) => {
+          el.style.background = `linear-gradient(90deg, var(--green) ${pct}%, rgba(148,163,184,.22) ${pct}%)`;
+        });
+        if (state.running && state.lastDetections.length) drawLive(state.lastDetections);
+        if (state.uploadDetections.length) drawUpload();
+      }
+      confRange.addEventListener("input", (e) => syncConf(+e.target.value));
+      confRange2.addEventListener("input", (e) => syncConf(+e.target.value));
+      syncConf(90);
+
+      function setStatus(tone, title, sub) {
+        statusCard.className = "card status-card";
+        if (tone === "ok") statusCard.classList.add("ok");
+        if (tone === "other") statusCard.classList.add("other");
+        statusTitle.textContent = title;
+        statusSub.textContent = sub;
+      }
+
+      function setBadge(tone, text) {
+        liveBadge.className = "live-badge";
+        if (tone === "ok") liveBadge.classList.add("ok");
+        if (tone === "other") liveBadge.classList.add("other");
+        liveBadgeText.textContent = text;
+      }
+
+      function roundRect(ctx, x, y, w, h, r) {
+        const rr = Math.min(r, h / 2, w / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      function drawBoxes(canvas, detections, width, height, mirror = false) {
+        const ctx = canvas.getContext("2d");
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        if (!width || !height) return;
+
+        const scale = Math.max(1, width / 640);
+        const line = Math.max(2.5, 3.2 * scale);
+        const font = Math.max(12, Math.round(14.5 * scale));
+        ctx.font = `700 ${font}px Inter, system-ui, sans-serif`;
+        ctx.textBaseline = "middle";
+
+        for (const det of detections) {
+          let [x1, y1, x2, y2] = det.box;
+          if (mirror) [x1, x2] = [width - x2, width - x1];
+          const color = "#22c55e";
+          const w = Math.max(1, x2 - x1);
+          const h = Math.max(1, y2 - y1);
+
+          ctx.save();
+          ctx.shadowColor = "rgba(0,0,0,.55)";
+          ctx.shadowBlur = 8 * scale;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = line;
+          roundRect(ctx, x1, y1, w, h, 8 * scale);
+          ctx.stroke();
+          ctx.restore();
+
+          const text = `${det.label.toUpperCase()}  ${(det.confidence * 100).toFixed(0)}%`;
+          const padding = 7 * scale;
+          const tw = ctx.measureText(text).width;
+          const th = font + padding * 1.6;
+          let lx = x1;
+          let ly = y1 - th - 5 * scale;
+          if (ly < 2) ly = y1 + 3 * scale;
+          lx = Math.max(2, Math.min(lx, width - tw - padding * 2 - 2));
+
+          ctx.fillStyle = "rgba(22, 163, 74, .94)";
+          roundRect(ctx, lx, ly, tw + padding * 2, th, 6 * scale);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.fillText(text, lx + padding, ly + th / 2 + 0.5);
+        }
+      }
+
+      function displayDetections(detections) {
+        detCount.textContent = `${detections.length} object${detections.length === 1 ? "" : "s"}`;
+        if (!detections.length) {
+          detList.innerHTML = `<div class="empty">No thumbs-up detections above ${Math.round(
+            state.conf * 100
+          )}% confidence.</div>`;
+          return;
+        }
+        detList.innerHTML = detections
+          .map((d) => {
+            const pct = Math.round(d.confidence * 1000) / 10;
+            const color = "#22c55e";
+            return `<div class="det">
+              <div class="det-top">
+                <span class="det-dot" style="background:${color};box-shadow:0 0 8px ${color}66"></span>
+                <span class="det-name">${d.label}</span>
+                <span class="det-score" style="color:${color}">${pct.toFixed(1)}%</span>
+              </div>
+              <div class="bar"><i style="width:${pct}%;background:linear-gradient(90deg,${color}99,${color})"></i></div>
+              <div class="det-coords">box [${d.box.map((v) => Math.round(v)).join(", ")}]</div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function updateLiveStatus(detections) {
+        if (detections.length) {
+          const best = detections.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
+          setStatus(
+            "ok",
+            "Thumbs Up detected",
+            `${detections.length} thumbs-up box${detections.length > 1 ? "es" : ""} · top confidence ${(best.confidence * 100).toFixed(1)}%`
+          );
+          setBadge("ok", `Thumbs up ${(best.confidence * 100).toFixed(0)}%`);
+        } else if (state.running) {
+          setStatus("idle", "Scanning…", "Show a clear thumbs up to the camera.");
+          setBadge("idle", "Scanning");
+        }
+      }
+
+      function drawLive(detections) {
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        drawBoxes(overlay, detections, w, h, state.mirrored);
+        displayDetections(detections);
+        updateLiveStatus(detections);
+      }
+
+      function setAspect(viewport, w, h) {
+        if (w && h) viewport.style.aspectRatio = `${w} / ${h}`;
+      }
+
+      async function startCamera() {
+        if (state.running) return;
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
+          state.stream = stream;
+          video.srcObject = stream;
+          await video.play();
+          state.running = true;
+          state.inFlight = false;
+          state.frames = 0;
+          state.fpsStart = performance.now();
+          state.lastDetections = [];
+          livePlaceholder.classList.add("hidden");
+          video.classList.add("mirrored");
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+          snapshotBtn.disabled = false;
+          deviceMeta.textContent = "camera live";
+          await new Promise((resolve) => {
+            if (video.videoWidth) return resolve();
+            video.onloadedmetadata = () => resolve();
+          });
+          setAspect(liveViewport, video.videoWidth, video.videoHeight);
+          frameResEl.textContent = `${video.videoWidth}×${video.videoHeight}`;
+          setBadge("idle", "Scanning");
+          setStatus("idle", "Scanning…", "Show a clear thumbs up to the camera.");
+          scanLoop();
+        } catch (err) {
+          console.error(err);
+          toastMsg("Camera permission denied or no camera found.");
+        }
+      }
+
+      function stopCamera() {
+        state.running = false;
+        state.inFlight = false;
+        if (state.stream) {
+          state.stream.getTracks().forEach((t) => t.stop());
+          state.stream = null;
+        }
+        video.srcObject = null;
+        video.classList.remove("mirrored");
+        const ctx = overlay.getContext("2d");
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        livePlaceholder.classList.remove("hidden");
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        snapshotBtn.disabled = true;
+        deviceMeta.textContent = "camera idle";
+        setBadge("idle", "Camera off");
+        setStatus("idle", "Waiting for camera", "Start the camera or upload an image to begin scanning.");
+        displayDetections([]);
+        fpsEl.textContent = "—";
+        latencyEl.textContent = "—";
+      }
+
+      async function scanLoop() {
+        if (!state.running) return;
+        if (!state.inFlight && video.readyState >= 2 && video.videoWidth) {
+          state.inFlight = true;
+          const w = video.videoWidth;
+          const h = video.videoHeight;
+          captureCanvas.width = w;
+          captureCanvas.height = h;
+          const cctx = captureCanvas.getContext("2d");
+          cctx.drawImage(video, 0, 0, w, h);
+          captureCanvas.toBlob(async (blob) => {
+            if (!blob) {
+              state.inFlight = false;
+              return;
+            }
+            const fd = new FormData();
+            fd.append("file", blob, "frame.jpg");
+            fd.append("conf", String(state.conf));
+            const started = performance.now();
+            try {
+              const res = await fetch("/predict", { method: "POST", body: fd });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || "Prediction failed");
+              if (!state.running) return;
+              state.lastDetections = data.detections || [];
+              drawLive(state.lastDetections);
+              latencyEl.textContent = `${Math.round(performance.now() - started)} ms`;
+              state.frames += 1;
+              const elapsed = (performance.now() - state.fpsStart) / 1000;
+              if (elapsed >= 1) {
+                state.fps = state.frames / elapsed;
+                fpsEl.textContent = state.fps.toFixed(1);
+                state.frames = 0;
+                state.fpsStart = performance.now();
+              }
+            } catch (err) {
+              console.error(err);
+              if (state.running) toastMsg(err.message || "Could not reach the detector.");
+            } finally {
+              state.inFlight = false;
+            }
+          }, "image/jpeg", 0.72);
+        }
+        setTimeout(scanLoop, 120);
+      }
+
+      function buildSnapshotCanvas() {
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d");
+        ctx.save();
+        if (state.mirrored) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+        ctx.drawImage(video, 0, 0, w, h);
+        ctx.restore();
+        ctx.drawImage(overlay, 0, 0, w, h);
+        return c;
+      }
+
+      function downloadSnapshot(openInTab = false) {
+        if (!video.videoWidth) return;
+        const c = buildSnapshotCanvas();
+        if (openInTab) {
+          const tab = window.open();
+          if (tab) tab.document.write(`<img src="${c.toDataURL("image/png")}" style="max-width:100%" />`);
+          return;
+        }
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const a = document.createElement("a");
+        a.href = c.toDataURL("image/png");
+        a.download = `thumbscan_${stamp}.png`;
+        a.click();
+      }
+
+      function drawUpload() {
+        const w = uploadImg.naturalWidth;
+        const h = uploadImg.naturalHeight;
+        drawBoxes(uploadOverlay, state.uploadDetections, w, h);
+        displayDetections(state.uploadDetections);
+        const thumbs = state.uploadDetections.filter((d) => d.class_id === 0);
+        if (thumbs.length) {
+          const best = thumbs.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
+          setStatus("ok", "Thumbs Up detected", `Top confidence ${(best.confidence * 100).toFixed(1)}% · ${w}×${h} image`);
+        } else {
+          setStatus("idle", "Nothing detected", `No thumbs-up detections above ${Math.round(state.conf * 100)}% confidence.`);
+        }
+      }
+
+      async function detectUpload() {
+        if (!state.uploadFile) return;
+        detectBtn.disabled = true;
+        detectBtn.textContent = "Detecting…";
+        const fd = new FormData();
+        fd.append("file", state.uploadFile);
+        fd.append("conf", String(state.conf));
+        try {
+          const res = await fetch("/predict", { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Prediction failed");
+          state.uploadDetections = data.detections || [];
+          uploadImg.onload = () => {
+            setAspect(uploadViewport, uploadImg.naturalWidth, uploadImg.naturalHeight);
+            drawUpload();
+          };
+          if (uploadImg.complete) {
+            setAspect(uploadViewport, uploadImg.naturalWidth, uploadImg.naturalHeight);
+            drawUpload();
+          }
+          frameResEl.textContent = `${data.width}×${data.height}`;
+        } catch (err) {
+          console.error(err);
+          toastMsg(err.message || "Detection failed.");
+        } finally {
+          detectBtn.disabled = false;
+          detectBtn.textContent = "Run Detection";
+        }
+      }
+
+      function loadUploadFile(file) {
+        if (!file || !file.type.startsWith("image/")) {
+          toastMsg("Please choose an image file.");
+          return;
+        }
+        state.uploadFile = file;
+        state.uploadDetections = [];
+        if (state.running) stopCamera();
+        uploadImg.src = URL.createObjectURL(file);
+        uploadViewport.classList.add("show");
+        uploadControls.style.display = "flex";
+        uploadViewport.style.aspectRatio = "4 / 3";
+        uploadImg.onload = () => {
+          setAspect(uploadViewport, uploadImg.naturalWidth, uploadImg.naturalHeight);
+          drawUpload();
+        };
+        detectUpload();
+      }
+
+      function clearUpload() {
+        state.uploadFile = null;
+        state.uploadDetections = [];
+        uploadImg.removeAttribute("src");
+        uploadViewport.classList.remove("show");
+        uploadControls.style.display = "none";
+        fileInput.value = "";
+        const ctx = uploadOverlay.getContext("2d");
+        ctx.clearRect(0, 0, uploadOverlay.width, uploadOverlay.height);
+        displayDetections([]);
+        setStatus("idle", "Waiting for camera", "Start the camera or upload an image to begin scanning.");
+      }
+
+      startBtn.addEventListener("click", startCamera);
+      stopBtn.addEventListener("click", stopCamera);
+      snapshotBtn.addEventListener("click", (e) => downloadSnapshot(e.ctrlKey || e.metaKey));
+      detectBtn.addEventListener("click", detectUpload);
+      clearBtn.addEventListener("click", clearUpload);
+      fileInput.addEventListener("change", (e) => loadUploadFile(e.target.files[0]));
+      dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag"); });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("drag");
+        loadUploadFile(e.dataTransfer.files[0]);
+      });
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          const isLive = tab.dataset.tab === "live";
+          $("livePane").classList.toggle("hidden", !isLive);
+          $("uploadPane").classList.toggle("hidden", isLive);
+          if (!isLive && state.running) stopCamera();
+        });
+      });
+
+      window.addEventListener("beforeunload", () => {
+        if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
+      });
+    })();
+  </script>
+</body>
+</html>

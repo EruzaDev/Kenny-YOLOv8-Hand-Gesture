@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Logs and caches
+*.log
+*.cache
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Downloaded base weights and intermediate experiment weights/runs
+yolov8n.pt
+yolov8s.pt
+yolov8n-cls.pt
+models/runs/
+models/gesture_recognizer.task
+models/thumbs_up_crops.pt
+models/thumbs_up_v1_best.pt
+runs/
+
+# Large/generated training datasets
+dataset_all/
+dataset_cls/
+dataset_cls_multi/
+dataset_crops/
+dataset_crops_multi/
+dataset_photos/
+dataset_teacher/
+dataset_teacher_bal/
+thumbs up dataset/

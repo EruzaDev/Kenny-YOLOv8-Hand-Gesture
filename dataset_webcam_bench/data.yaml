@@ -1,0 +1,6 @@
+path: /home/siege/Documents/YOLO-Hand-Gesture-Training/dataset_webcam_bench
+train: images
+val: images
+names:
+  0: thumbs_up
+  1: other_gesture

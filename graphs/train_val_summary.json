@@ -1,0 +1,48 @@
+{
+  "classifier": {
+    "run": "thumbsup_cls_clean2",
+    "epochs": 28,
+    "best_epoch": 8,
+    "best_val_top1": 0.65854,
+    "best_val_top5": 1.0,
+    "train_loss_at_best": 0.19567,
+    "val_loss_at_best": 1.17757,
+    "final_epoch": 28,
+    "final_train_loss": 0.07304,
+    "final_val_loss": 2.90701,
+    "final_val_top1": 0.43902,
+    "final_val_top5": 1.0
+  },
+  "crop_detector": {
+    "run": "thumbsup_crops_n512",
+    "epochs": 24,
+    "best_epoch": 14,
+    "best_map50": 0.62233,
+    "best_map50_95": 0.44306,
+    "best_precision": 0.58984,
+    "best_recall": 0.61758,
+    "train_box_loss_at_best": 0.96944,
+    "val_box_loss_at_best": 1.02417,
+    "final_epoch": 24,
+    "final_map50": 0.55228,
+    "final_map50_95": 0.37551,
+    "final_train_box_loss": 0.78286,
+    "final_val_box_loss": 1.07244
+  },
+  "stage1_detector": {
+    "run": "stage1_all",
+    "epochs": 25,
+    "best_epoch": 17,
+    "best_map50": 0.74913,
+    "best_map50_95": 0.51018,
+    "best_precision": 0.94417,
+    "best_recall": 0.6883,
+    "train_box_loss_at_best": 0.97651,
+    "val_box_loss_at_best": 1.11827,
+    "final_epoch": 25,
+    "final_map50": 0.71139,
+    "final_map50_95": 0.49774,
+    "final_train_box_loss": 0.79593,
+    "final_val_box_loss": 1.0859
+  }
+}

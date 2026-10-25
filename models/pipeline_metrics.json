@@ -1,0 +1,53 @@
+{
+  "pipeline": {
+    "hand_detector": "teacher_haGRID_yolo26n.pt",
+    "classifier": "thumbs_up_classifier.pt",
+    "teacher_like_min_conf": 0.35,
+    "fallback_max_hand_conf": 0.25,
+    "fallback_min_box_fraction": 0.02,
+    "crop_margins": [
+      0.4,
+      0.7,
+      1.0
+    ]
+  },
+  "photo_validation": {
+    "images_with_thumbs_up": 19,
+    "ground_truth_thumbs_up": 26,
+    "true_positives": 26,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "true_positive_confidence_at_least_0_90": 25,
+    "true_positive_mean_confidence": 0.9857653846153848,
+    "true_positive_median_confidence": 0.9997
+  },
+  "webcam_crop_benchmark": {
+    "images_with_thumbs_up": 19,
+    "ground_truth_thumbs_up": 19,
+    "true_positives": 17,
+    "false_positives": 0,
+    "false_negatives": 2,
+    "true_positive_confidence_at_least_0_90": 17,
+    "true_positive_mean_confidence": 0.9876235294117647,
+    "true_positive_median_confidence": 0.9999
+  },
+  "negative_photo_check": {
+    "photo_validation": {
+      "images_without_thumbs_up": 11,
+      "images_with_false_thumbs_up": 0,
+      "false_thumbs_up_at_least_0_90": 0,
+      "examples": []
+    },
+    "photo_train": {
+      "images_without_thumbs_up": 50,
+      "images_with_false_thumbs_up": 1,
+      "false_thumbs_up_at_least_0_90": 0,
+      "examples": [
+        {
+          "image": "34_png.rf.94daf1a70135c32c1ed12e1b8bd82998",
+          "confidence": 0.7164
+        }
+      ]
+    }
+  }
+}

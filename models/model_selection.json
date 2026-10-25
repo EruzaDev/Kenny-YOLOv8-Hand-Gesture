@@ -1,0 +1,18 @@
+{
+  "winner": "stage1_all",
+  "scores": {
+    "stage1_all": {
+      "map50": 0.8643334907602517,
+      "map50_95": 0.5837904384291038,
+      "precision": 0.7550857927613837,
+      "recall": 0.8049040869107672
+    },
+    "stage2_photos": {
+      "map50": 0.7380451602430285,
+      "map50_95": 0.5227269125638992,
+      "precision": 0.769532990339342,
+      "recall": 0.683881614754559
+    }
+  },
+  "weights": "models/runs/stage1_all/weights/best.pt"
+}
